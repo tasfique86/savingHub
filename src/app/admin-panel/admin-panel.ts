@@ -2,8 +2,9 @@ import { Component, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MemberService } from '../services/member.service';
+import { AuthService } from '../services/auth.service';
 import { Card } from 'primeng/card';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 
 @Component({
   selector: 'app-admin-panel',
@@ -13,6 +14,8 @@ import { RouterModule } from '@angular/router';
 })
 export class AdminPanel {
   private readonly memberService = inject(MemberService);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly members = this.memberService.members;
   protected readonly months = this.memberService.months;
@@ -41,6 +44,7 @@ export class AdminPanel {
 
   successMessage = signal('');
   errorMessage = signal('');
+  loading = signal(false);
 
   selectMember(member: any) {
     this.selectedMemberId.set(member.shareNumber);
@@ -53,32 +57,48 @@ export class AdminPanel {
     setTimeout(() => this.isDropdownOpen.set(false), 200);
   }
 
-  deposit(): void {
+  async deposit(): Promise<void> {
     if (!this.selectedMemberId() || !this.depositAmount() || this.depositAmount()! <= 0) {
       this.errorMessage.set('Please select a member and enter a valid amount.');
       return;
     }
 
-    this.memberService.addDeposit(
-      this.selectedMemberId(),
-      this.depositAmount()!,
-      this.selectedMonthIndex(),
-      this.selectedYear(),
-      this.transactionDate(),
-      this.note()
-    );
-    // Note and transactionDate are available for future storage logic
-
-    this.successMessage.set('Deposit recorded successfully!');
+    this.loading.set(true);
     this.errorMessage.set('');
-    
-    // Reset form partially
-    this.depositAmount.set(null);
-    this.note.set('');
-    this.selectedMemberId.set('');
-    this.selectedMemberName.set('Choose a member...');
-    
-    // Clear success message after 3 seconds
-    setTimeout(() => this.successMessage.set(''), 3000);
+
+    try {
+      await this.memberService.addDeposit(
+        this.selectedMemberId(),
+        this.depositAmount()!,
+        this.selectedMonthIndex(),
+        this.selectedYear(),
+        this.transactionDate(),
+        this.note()
+      );
+
+      this.successMessage.set('Deposit recorded successfully!');
+      
+      // Reset form partially
+      this.depositAmount.set(null);
+      this.note.set('');
+      this.selectedMemberId.set('');
+      this.selectedMemberName.set('Choose a member...');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => this.successMessage.set(''), 3000);
+    } catch (error: any) {
+      this.errorMessage.set(error.message || 'Failed to record deposit. Please try again.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async logout() {
+    try {
+      await this.authService.signOut();
+      this.router.navigate(['/']);
+    } catch(err) {
+      console.error('Logout error', err);
+    }
   }
 }
