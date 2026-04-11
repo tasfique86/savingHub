@@ -1,0 +1,136 @@
+<div class="p-6 lg:p-10 space-y-8 animate-in fade-in duration-700 bg-[#f8fafc]">
+  <!-- Header Section -->
+  <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Club Dashboard</h1>
+      <p class="text-slate-500 mt-1 font-medium">Overview of Khutakhali Somiti financial status.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a routerLink="/admin" class="px-4 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all focus:ring-4 focus:ring-slate-900/10 flex items-center gap-2">
+        <i class="pi pi-cog"></i> Admin Panel
+      </a>
+      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-700 hidden sm:inline-block">
+        Live Updates
+      </span>
+    </div>
+  </header>
+
+  <!-- Stats Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <p-card styleClass="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow bg-white">
+      <div class="flex items-center gap-4">
+        <div class="p-4 rounded-2xl bg-primary-50 text-primary-600">
+          <i class="pi pi-wallet text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Deposit</p>
+          <h2 class="text-4xl font-extrabold text-slate-900 mt-1">{{ totalDeposit() | currency:'BDT ':'symbol':'1.0-0' }}</h2>
+        </div>
+      </div>
+    </p-card>
+
+    <p-card styleClass="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow bg-white">
+      <div class="flex items-center gap-4">
+        <div class="p-4 rounded-2xl bg-green-50 text-green-600">
+          <i class="pi pi-users text-2xl"></i>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Members</p>
+          <h2 class="text-4xl font-extrabold text-slate-900 mt-1">{{ totalMembers() }} Members</h2>
+        </div>
+      </div>
+    </p-card>
+  </div>
+
+  <!-- Monthly Deposit Matrix -->
+  <p-card header="Monthly Deposit Status" styleClass="border-none shadow-sm bg-white overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse min-w-[800px]">
+        <thead>
+          <tr class="bg-slate-50">
+            <th class="p-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 sticky left-0 bg-slate-50 z-10 w-[180px]">Member Name</th>
+            @for (month of months(); track month) {
+              <th class="p-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">{{ month }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (member of members(); track member.name) {
+            <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+              <td class="p-4 font-bold text-slate-800 sticky left-0 bg-white border-r border-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                {{ member.name }}
+              </td>
+              @for (month of months(); track $index) {
+                <td class="p-4 text-center">
+                  <div class="flex flex-col items-center gap-1">
+                    @if (getMonthlyStatus(member, $index)) {
+                      <span class="text-[10px] font-bold text-green-600">৳{{ getMonthlyAmount(member, $index) }}</span>
+                      <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                        <i class="pi pi-check text-[10px]"></i>
+                      </div>
+                    } @else {
+                      <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center">
+                        <i class="pi pi-minus text-[10px]"></i>
+                      </div>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </p-card>
+
+  <!-- Member List & Transactions Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1">
+      <p-card header="Member List" styleClass="h-full border-none shadow-sm bg-white">
+        <p-table [value]="members()" [responsiveLayout]="'scroll'" styleClass="p-datatable-sm">
+          <ng-template pTemplate="header">
+            <tr>
+              <th class="bg-white text-slate-700 font-bold">Name</th>
+              <th class="bg-white text-slate-700 font-bold">Share No.</th>
+              <th class="bg-white text-slate-700 font-bold text-right">Deposit</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-member>
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="font-bold text-slate-800">{{ member.name }}</td>
+              <td><span class="text-slate-500 text-xs font-medium">{{ member.shareNumber }}</span></td>
+              <td class="text-right font-bold text-primary-600">{{ member.totalDeposit | currency:'BDT ':'symbol':'1.0-0' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </div>
+
+    <div class="lg:col-span-2">
+      <p-card header="Recent Transactions" styleClass="h-full border-none shadow-sm bg-white">
+        <p-table [value]="transactions()" [paginator]="true" [rows]="5" responsiveLayout="scroll">
+          <ng-template pTemplate="header">
+            <tr>
+              <th class="bg-white text-slate-700 font-bold border-b border-slate-100">ID</th>
+              <th class="bg-white text-slate-700 font-bold border-b border-slate-100">Member</th>
+              <th class="bg-white text-slate-700 font-bold border-b border-slate-100">Amount</th>
+              <th class="bg-white text-slate-700 font-bold border-b border-slate-100">Status</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-tx>
+            <tr class="border-b border-slate-50">
+              <td class="font-mono text-xs text-slate-500">{{ tx.id }}</td>
+              <td class="font-bold text-slate-800">{{ tx.memberName }}</td>
+              <td class="font-bold text-primary-700">{{ tx.amount | currency:'BDT ':'symbol':'1.0-0' }}</td>
+              <td>
+                <span [class]="'px-2 py-1 text-[10px] font-black uppercase rounded ' + (tx.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800')">
+                  {{ tx.status }}
+                </span>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    </div>
+  </div>
+</div>
