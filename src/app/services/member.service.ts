@@ -33,6 +33,7 @@ export class MemberService {
 
   readonly members = signal<Member[]>([]);
   readonly transactions = signal<Transaction[]>([]);
+  readonly displayYear = signal<number>(new Date().getFullYear());
 
   readonly totalDeposit = computed(() => {
     return this.members().reduce((acc, m) => acc + m.totalDeposit, 0);
@@ -65,23 +66,39 @@ export class MemberService {
       return;
     }
 
-    // Map to Member interface
+    // ── Determine display year globally (consistent for the whole table) ──
+    // Pick the highest year that has any ledger row across all members.
+    const allYears: number[] = (membersData || []).flatMap(
+      (m: any) => (m.monthly_ledger || []).map((l: any) => l.year as number)
+    );
+    const displayYear = allYears.length > 0 ? Math.max(...allYears) : currentYear;
+    this.displayYear.set(displayYear);
+
+    // Map to Member interface — all members use the SAME displayYear for consistency
     const mappedMembers: Member[] = (membersData || []).map((m: any) => {
       const paymentStatus = new Array(12).fill(false);
       const paymentAmounts = new Array(12).fill(null);
-      let total = 0;
 
-      // Filter ledgers for current year (fallback to 2025 if current year is earlier in sample db vs actual)
-      // Usually users might run sample data for 2025
-      const yearLedgers = m.monthly_ledger?.filter((l: any) => l.year === 2025 || l.year === currentYear) || [];
+      const allLedgers: any[] = m.monthly_ledger || [];
+
+      // Filter to the globally determined display year
+      const yearLedgers = allLedgers.filter((l: any) => l.year === displayYear);
 
       yearLedgers.forEach((l: any) => {
         const mIdx = l.month - 1;
         paymentAmounts[mIdx] = l.amount_paid > 0 ? l.amount_paid : null;
-        paymentStatus[mIdx] = l.status === 'paid_on_time' || l.status === 'paid_late' || l.status === 'advance';
+        // Include 'partial' — partial payments should show as paid in the grid
+        paymentStatus[mIdx] =
+          l.status === 'paid_on_time' ||
+          l.status === 'paid_late'    ||
+          l.status === 'advance'      ||
+          l.status === 'partial';
       });
 
-      total = m.monthly_ledger?.reduce((acc: number, curr: any) => acc + Number(curr.amount_paid), 0) || 0;
+      // Total deposit across ALL years
+      const total = allLedgers.reduce(
+        (acc: number, curr: any) => acc + Number(curr.amount_paid), 0
+      );
 
       return {
         id: m.id,
@@ -94,6 +111,7 @@ export class MemberService {
     });
 
     this.members.set(mappedMembers);
+
 
     // Fetch transactions
     const { data: txData, error: txError } = await this.supabase
@@ -120,6 +138,33 @@ export class MemberService {
     }));
 
     this.transactions.set(mappedTxs);
+  }
+
+  async addMember(name: string, email: string, phone?: string, joinedDate?: string): Promise<void> {
+    const session = await this.supabase.auth.getSession();
+    if (!session.data.session) {
+      throw new Error('You must be logged in to add a member.');
+    }
+
+    const payload: any = {
+      name,
+      email,
+      ...(phone && { phone }),
+      ...(joinedDate && { joined_date: joinedDate }),
+    };
+
+    const { error } = await this.supabase.from('members').insert(payload);
+
+    if (error) {
+      console.error('Insert member error:', error);
+      // Give a friendly message for duplicate email
+      if (error.code === '23505') {
+        throw new Error('A member with this email already exists.');
+      }
+      throw error;
+    }
+
+    await this.loadData();
   }
 
   async addDeposit(memberIdStr: string, amount: number, monthIndex: number, year: number, date?: string, note?: string): Promise<void> {

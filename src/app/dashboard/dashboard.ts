@@ -10,7 +10,7 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [CommonModule, Card, TableModule, RouterModule],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css'
+  styleUrl: './dashboard.css',
 })
 export class Dashboard {
   private memberService = inject(MemberService);
@@ -21,6 +21,8 @@ export class Dashboard {
   months = this.memberService.months;
   members = this.memberService.members;
   transactions = this.memberService.transactions;
+  displayYear = this.memberService.displayYear;
+  // console.log(this.displayYear);
 
   getMonthlyStatus(member: any, index: number): boolean {
     return member.paymentStatus[index];

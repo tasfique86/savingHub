@@ -8,8 +8,8 @@
         <i class="pi pi-arrow-left"></i>
         Back to Dashboard
       </a>
-      <button 
-        (click)="logout()" 
+      <button
+        (click)="logout()"
         class="inline-flex items-center gap-2 text-red-500 font-semibold hover:text-red-700 transition-colors bg-red-50 px-4 py-2 rounded-xl"
       >
         <i class="pi pi-sign-out"></i>
@@ -23,214 +23,361 @@
   </header>
 
   <main class="max-w-6xl mx-auto">
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      <!-- Deposit Form -->
-      <div class="lg:col-span-3">
-        <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
-          <div class="flex items-center gap-4 mb-8">
-            <div
-              class="w-14 h-14 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-pink-500 shadow-md"
-            >
-              <i class="pi pi-wallet text-2xl"></i>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-slate-900">Record Member Deposit</h2>
-              <p class="text-slate-500 text-sm mt-1">
-                Select a member and enter the contribution details
-              </p>
-            </div>
-          </div>
 
-          <form (ngSubmit)="deposit()" class="space-y-6">
-            <!-- Member Search Dropdown -->
-            <div class="flex flex-col gap-2 relative">
-              <label class="text-sm font-bold text-slate-700 ml-1">Select Member</label>
-              <div class="relative">
-                <!-- Custom Select Button -->
-                <button
-                  type="button"
-                  (click)="isDropdownOpen.set(!isDropdownOpen())"
-                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer flex items-center justify-between"
-                >
-                  <span>{{ selectedMemberName() }}</span>
-                  <i class="pi pi-chevron-down text-sm text-slate-500"></i>
-                </button>
+    <!-- ── Tab Navigation ── -->
+    <div class="flex gap-2 mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 w-fit">
+      <button
+        id="tab-deposit"
+        type="button"
+        (click)="setTab('deposit')"
+        [class]="activeTab() === 'deposit'
+          ? 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-primary-600 to-pink-500 shadow-md transition-all'
+          : 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all'"
+      >
+        <i class="pi pi-wallet text-base"></i>
+        Add Deposit
+      </button>
 
-                <!-- Dropdown panel with Search -->
-                @if (isDropdownOpen()) {
-                  <div
-                    class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-2"
-                  >
-                    <div class="relative mb-2">
-                      <i
-                        class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
-                      ></i>
-                      <input
-                        type="text"
-                        [(ngModel)]="searchMember"
-                        name="searchMember"
-                        placeholder="Search by name or share number..."
-                        autocomplete="off"
-                        class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-sans"
-                      />
-                    </div>
-                    <ul class="max-h-60 overflow-y-auto custom-scrollbar">
-                      @for (m of filteredMembers(); track m.shareNumber) {
-                        <li>
-                          <button
-                            type="button"
-                            (click)="selectMember(m)"
-                            class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors flex items-center justify-between text-base"
-                          >
-                            <span>{{ m.name }}</span>
-                            <span
-                              class="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md"
-                              >{{ m.shareNumber }}</span
-                            >
-                          </button>
-                        </li>
-                      }
-                      @if (filteredMembers().length === 0) {
-                        <li class="px-3 py-4 text-slate-500 italic text-sm text-center">
-                          No members found.
-                        </li>
-                      }
-                    </ul>
-                  </div>
-                }
+      <button
+        id="tab-add-member"
+        type="button"
+        (click)="setTab('add-member')"
+        [class]="activeTab() === 'add-member'
+          ? 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-primary-600 to-pink-500 shadow-md transition-all'
+          : 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all'"
+      >
+        <i class="pi pi-user-plus text-base"></i>
+        Add Member
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: Add Deposit                                               -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    @if (activeTab() === 'deposit') {
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+        <!-- Deposit Form -->
+        <div class="lg:col-span-3">
+          <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
+            <div class="flex items-center gap-4 mb-8">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-pink-500 shadow-md">
+                <i class="pi pi-wallet text-2xl"></i>
               </div>
-              <input type="hidden" [(ngModel)]="selectedMemberId" name="memberId" required />
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Record Member Deposit</h2>
+                <p class="text-slate-500 text-sm mt-1">Select a member and enter the contribution details</p>
+              </div>
             </div>
 
-            <!-- Transaction Info Grid: Amount & Date -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex flex-col gap-2">
-                <label for="amount" class="text-sm font-bold text-slate-700 ml-1"
-                  >Deposit Amount (৳)</label
-                >
-                <div class="relative flex items-center">
-                  <span class="absolute left-4 font-bold text-slate-400">৳</span>
+            <form (ngSubmit)="deposit()" class="space-y-6">
+              <!-- Member Search Dropdown -->
+              <div class="flex flex-col gap-2 relative">
+                <label class="text-sm font-bold text-slate-700 ml-1">Select Member</label>
+                <div class="relative">
+                  <button
+                    type="button"
+                    (click)="isDropdownOpen.set(!isDropdownOpen())"
+                    class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer flex items-center justify-between"
+                  >
+                    <span>{{ selectedMemberName() }}</span>
+                    <i class="pi pi-chevron-down text-sm text-slate-500"></i>
+                  </button>
+
+                  @if (isDropdownOpen()) {
+                    <div class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden p-2">
+                      <div class="relative mb-2">
+                        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input
+                          type="text"
+                          [(ngModel)]="searchMember"
+                          name="searchMember"
+                          placeholder="Search by name or share number..."
+                          autocomplete="off"
+                          class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-sans"
+                        />
+                      </div>
+                      <ul class="max-h-60 overflow-y-auto custom-scrollbar">
+                        @for (m of filteredMembers(); track m.shareNumber) {
+                          <li>
+                            <button
+                              type="button"
+                              (click)="selectMember(m)"
+                              class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors flex items-center justify-between text-base"
+                            >
+                              <span>{{ m.name }}</span>
+                              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{{ m.shareNumber }}</span>
+                            </button>
+                          </li>
+                        }
+                        @if (filteredMembers().length === 0) {
+                          <li class="px-3 py-4 text-slate-500 italic text-sm text-center">No members found.</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+                <input type="hidden" [(ngModel)]="selectedMemberId" name="memberId" required />
+              </div>
+
+              <!-- Amount & Date -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col gap-2">
+                  <label for="amount" class="text-sm font-bold text-slate-700 ml-1">Deposit Amount (৳)</label>
+                  <div class="relative flex items-center">
+                    <span class="absolute left-4 font-bold text-slate-400">৳</span>
+                    <input
+                      type="number"
+                      id="amount"
+                      [(ngModel)]="depositAmount"
+                      name="amount"
+                      placeholder="e.g. 5000"
+                      required
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <label for="transactionDate" class="text-sm font-bold text-slate-700 ml-1">Transaction Date</label>
                   <input
-                    type="number"
-                    id="amount"
-                    [(ngModel)]="depositAmount"
-                    name="amount"
-                    placeholder="e.g. 5000"
-                    required
-                    class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                    type="date"
+                    id="transactionDate"
+                    [(ngModel)]="transactionDate"
+                    name="transactionDate"
+                    class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer"
                   />
                 </div>
               </div>
 
+              <!-- Notes -->
               <div class="flex flex-col gap-2">
-                <label for="transactionDate" class="text-sm font-bold text-slate-700 ml-1"
-                  >Transaction Date</label
-                >
-                <input
-                  type="date"
-                  id="transactionDate"
-                  [(ngModel)]="transactionDate"
-                  name="transactionDate"
-                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer"
-                />
-              </div>
-            </div>
-
-            <!-- Period Grid: Month & Year -->
-            <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex flex-col gap-2">
-                <label for="month" class="text-sm font-bold text-slate-700 ml-1">For Month</label>
-                <select id="month" [(ngModel)]="selectedMonthIndex" name="month"
-                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all appearance-none cursor-pointer">
-                  @for (month of months(); track $index) {
-                    <option [value]="$index">{{ month }}</option>
-                  }
-                </select>
+                <label for="note" class="text-sm font-bold text-slate-700 ml-1">Notes (Optional)</label>
+                <textarea
+                  id="note"
+                  [(ngModel)]="note"
+                  name="note"
+                  rows="3"
+                  placeholder="Add any details about this transaction..."
+                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none"
+                ></textarea>
               </div>
 
-              <div class="flex flex-col gap-2">
-                <label for="year" class="text-sm font-bold text-slate-700 ml-1">Select Year</label>
-                <select id="year" [(ngModel)]="selectedYear" name="year"
-                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all appearance-none cursor-pointer">
-                  <option [value]="2026">2026</option>
-                  <option [value]="2027">2027</option>
-                  <option [value]="2028">2028</option>
-                </select>
-              </div>
-            </div> -->
-
-            <!-- Notes Section -->
-            <div class="flex flex-col gap-2">
-              <label for="note" class="text-sm font-bold text-slate-700 ml-1"
-                >Notes (Optional)</label
-              >
-              <textarea
-                id="note"
-                [(ngModel)]="note"
-                name="note"
-                rows="3"
-                placeholder="Add any details about this transaction..."
-                class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none"
-              ></textarea>
-            </div>
-
-            @if (successMessage()) {
-              <div
-                class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold text-sm flex items-center gap-2"
-              >
-                <i class="pi pi-check-circle"></i>
-                {{ successMessage() }}
-              </div>
-            }
-
-            @if (errorMessage()) {
-              <div
-                class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold text-sm flex items-center gap-2"
-              >
-                <i class="pi pi-exclamation-circle"></i>
-                {{ errorMessage() }}
-              </div>
-            }
-
-            <button
-              type="submit"
-              [disabled]="loading()"
-              class="w-full py-4 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-2xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 transition-all outline-none disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
-            >
-              <div class="flex items-center justify-center gap-2">
-                @if (loading()) {
-                  <i class="pi pi-spinner pi-spin"></i> Processing...
-                } @else {
-                  Confirm & Record Deposit
-                }
-              </div>
-            </button>
-          </form>
-        </p-card>
-      </div>
-
-      <!-- Quick Stats -->
-      <div class="lg:col-span-2">
-        <p-card header="Quick Stats" styleClass="border-none shadow-sm bg-white h-full p-2">
-          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2"
-              >Current Selection</label
-            >
-            @if (selectedMemberId()) {
-              @for (m of members(); track m.shareNumber) {
-                @if (m.shareNumber === selectedMemberId()) {
-                  <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ m.name }}</h3>
-                  <p class="text-primary-600 font-bold">
-                    Total Deposit: ৳{{ m.totalDeposit | number: '1.0-0' }}
-                  </p>
-                }
+              <!-- Feedback -->
+              @if (successMessage()) {
+                <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold text-sm flex items-center gap-2">
+                  <i class="pi pi-check-circle"></i>
+                  {{ successMessage() }}
+                </div>
               }
-            } @else {
-              <p class="text-slate-400 font-medium italic py-2">No member selected</p>
-            }
-          </div>
-        </p-card>
+              @if (errorMessage()) {
+                <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold text-sm flex items-center gap-2">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ errorMessage() }}
+                </div>
+              }
+
+              <button
+                type="submit"
+                [disabled]="loading()"
+                class="w-full py-4 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-2xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 transition-all outline-none disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+              >
+                <div class="flex items-center justify-center gap-2">
+                  @if (loading()) {
+                    <i class="pi pi-spinner pi-spin"></i> Processing...
+                  } @else {
+                    <i class="pi pi-check"></i> Confirm &amp; Record Deposit
+                  }
+                </div>
+              </button>
+            </form>
+          </p-card>
+        </div>
+
+        <!-- Quick Stats Sidebar -->
+        <div class="lg:col-span-2">
+          <p-card header="Quick Stats" styleClass="border-none shadow-sm bg-white h-full p-2">
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Current Selection</label>
+              @if (selectedMemberId()) {
+                @for (m of members(); track m.shareNumber) {
+                  @if (m.shareNumber === selectedMemberId()) {
+                    <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ m.name }}</h3>
+                    <p class="text-primary-600 font-bold">Total Deposit: ৳{{ m.totalDeposit | number: '1.0-0' }}</p>
+                  }
+                }
+              } @else {
+                <p class="text-slate-400 font-medium italic py-2">No member selected</p>
+              }
+            </div>
+
+            <!-- Total Members stat -->
+            <div class="mt-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Total Members</label>
+              <h3 class="text-3xl font-extrabold text-slate-900">{{ members().length }}</h3>
+              <p class="text-slate-400 text-sm mt-1">Registered in the somiti</p>
+            </div>
+          </p-card>
+        </div>
       </div>
-    </div>
+    }
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: Add Member                                                -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    @if (activeTab() === 'add-member') {
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+        <!-- Add Member Form -->
+        <div class="lg:col-span-3">
+          <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
+            <div class="flex items-center gap-4 mb-8">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-md">
+                <i class="pi pi-user-plus text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Add New Member</h2>
+                <p class="text-slate-500 text-sm mt-1">Register a new somiti member with their details</p>
+              </div>
+            </div>
+
+            <form (ngSubmit)="addMember()" class="space-y-6">
+
+              <!-- Name + Email grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Full Name -->
+                <div class="flex flex-col gap-2">
+                  <label for="memberName" class="text-sm font-bold text-slate-700 ml-1">
+                    Full Name <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative flex items-center">
+                    <i class="pi pi-user absolute left-4 text-slate-400"></i>
+                    <input
+                      type="text"
+                      id="memberName"
+                      [(ngModel)]="newMemberName"
+                      name="memberName"
+                      placeholder="e.g. Mohammad Ali"
+                      required
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <!-- Email -->
+                <div class="flex flex-col gap-2">
+                  <label for="memberEmail" class="text-sm font-bold text-slate-700 ml-1">
+                    Email Address <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative flex items-center">
+                    <i class="pi pi-envelope absolute left-4 text-slate-400"></i>
+                    <input
+                      type="email"
+                      id="memberEmail"
+                      [(ngModel)]="newMemberEmail"
+                      name="memberEmail"
+                      placeholder="e.g. ali@example.com"
+                      required
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Phone + Joined Date grid -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Phone -->
+                <div class="flex flex-col gap-2">
+                  <label for="memberPhone" class="text-sm font-bold text-slate-700 ml-1">Phone Number (Optional)</label>
+                  <div class="relative flex items-center">
+                    <i class="pi pi-phone absolute left-4 text-slate-400"></i>
+                    <input
+                      type="tel"
+                      id="memberPhone"
+                      [(ngModel)]="newMemberPhone"
+                      name="memberPhone"
+                      placeholder="e.g. 01700-000000"
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <!-- Joined Date -->
+                <div class="flex flex-col gap-2">
+                  <label for="memberJoinedDate" class="text-sm font-bold text-slate-700 ml-1">Joined Date</label>
+                  <div class="relative flex items-center">
+                    <i class="pi pi-calendar absolute left-4 text-slate-400"></i>
+                    <input
+                      type="date"
+                      id="memberJoinedDate"
+                      [(ngModel)]="newMemberJoinedDate"
+                      name="memberJoinedDate"
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Feedback -->
+              @if (successMessage()) {
+                <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold text-sm flex items-center gap-2">
+                  <i class="pi pi-check-circle"></i>
+                  {{ successMessage() }}
+                </div>
+              }
+              @if (errorMessage()) {
+                <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold text-sm flex items-center gap-2">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ errorMessage() }}
+                </div>
+              }
+
+              <button
+                type="submit"
+                [disabled]="loading()"
+                class="w-full py-4 mt-4 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white font-bold rounded-2xl shadow-[0_4px_14px_0_rgba(16,185,129,0.35)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.22)] hover:-translate-y-0.5 transition-all outline-none disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+              >
+                <div class="flex items-center justify-center gap-2">
+                  @if (loading()) {
+                    <i class="pi pi-spinner pi-spin"></i> Adding Member...
+                  } @else {
+                    <i class="pi pi-user-plus"></i> Add Member to Somiti
+                  }
+                </div>
+              </button>
+            </form>
+          </p-card>
+        </div>
+
+        <!-- Members List Sidebar -->
+        <div class="lg:col-span-2">
+          <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-bold text-slate-700">Current Members</h3>
+              <span class="text-xs bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full">
+                {{ members().length }} total
+              </span>
+            </div>
+            <ul class="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
+              @for (m of members(); track m.shareNumber) {
+                <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                      {{ m.name.charAt(0).toUpperCase() }}
+                    </div>
+                    <span class="font-semibold text-slate-800 text-sm">{{ m.name }}</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md font-medium">{{ m.shareNumber }}</span>
+                </li>
+              }
+              @if (members().length === 0) {
+                <li class="text-slate-400 italic text-sm text-center py-6">No members found.</li>
+              }
+            </ul>
+          </p-card>
+        </div>
+      </div>
+    }
+
   </main>
 </div>

@@ -6,6 +6,8 @@ import { AuthService } from '../services/auth.service';
 import { Card } from 'primeng/card';
 import { RouterModule, Router } from '@angular/router';
 
+export type AdminTab = 'deposit' | 'add-member';
+
 @Component({
   selector: 'app-admin-panel',
   imports: [CommonModule, FormsModule, Card, RouterModule],
@@ -20,15 +22,24 @@ export class AdminPanel {
   protected readonly members = this.memberService.members;
   protected readonly months = this.memberService.months;
 
-  // Form State
+  // Tab State
+  activeTab = signal<AdminTab>('deposit');
+
+  setTab(tab: AdminTab) {
+    this.activeTab.set(tab);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+  }
+
+  // ─── Deposit Form State ───────────────────────────────────────────────────
   selectedMemberId = signal('');
   selectedMemberName = signal('Choose a member...');
   searchMember = signal('');
-  
+
   filteredMembers = computed(() => {
     const term = this.searchMember().toLowerCase();
     if (!term) return this.members();
-    return this.members().filter(m => 
+    return this.members().filter(m =>
       m.name.toLowerCase().includes(term) || m.shareNumber.toLowerCase().includes(term)
     );
   });
@@ -38,18 +49,26 @@ export class AdminPanel {
   depositAmount = signal<number | null>(null);
   selectedMonthIndex = signal(new Date().getMonth());
   selectedYear = signal(new Date().getFullYear());
-  
+
   transactionDate = signal(new Date().toISOString().split('T')[0]);
   note = signal('');
 
+  // ─── Add Member Form State ────────────────────────────────────────────────
+  newMemberName = signal('');
+  newMemberEmail = signal('');
+  newMemberPhone = signal('');
+  newMemberJoinedDate = signal(new Date().toISOString().split('T')[0]);
+
+  // ─── Shared State ─────────────────────────────────────────────────────────
   successMessage = signal('');
   errorMessage = signal('');
   loading = signal(false);
 
+  // ─── Deposit Methods ──────────────────────────────────────────────────────
   selectMember(member: any) {
     this.selectedMemberId.set(member.shareNumber);
     this.selectedMemberName.set(`${member.name} (${member.shareNumber})`);
-    this.searchMember.set(''); // Clear search on select
+    this.searchMember.set('');
     this.isDropdownOpen.set(false);
   }
 
@@ -77,14 +96,12 @@ export class AdminPanel {
       );
 
       this.successMessage.set('Deposit recorded successfully!');
-      
-      // Reset form partially
+
       this.depositAmount.set(null);
       this.note.set('');
       this.selectedMemberId.set('');
       this.selectedMemberName.set('Choose a member...');
-      
-      // Clear success message after 3 seconds
+
       setTimeout(() => this.successMessage.set(''), 3000);
     } catch (error: any) {
       this.errorMessage.set(error.message || 'Failed to record deposit. Please try again.');
@@ -93,11 +110,49 @@ export class AdminPanel {
     }
   }
 
+  // ─── Add Member Methods ───────────────────────────────────────────────────
+  async addMember(): Promise<void> {
+    if (!this.newMemberName().trim()) {
+      this.errorMessage.set('Member name is required.');
+      return;
+    }
+    if (!this.newMemberEmail().trim()) {
+      this.errorMessage.set('Email address is required.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.errorMessage.set('');
+    this.successMessage.set('');
+
+    try {
+      await this.memberService.addMember(
+        this.newMemberName().trim(),
+        this.newMemberEmail().trim(),
+        this.newMemberPhone().trim(),
+        this.newMemberJoinedDate()
+      );
+
+      this.successMessage.set(`Member "${this.newMemberName()}" added successfully!`);
+      this.newMemberName.set('');
+      this.newMemberEmail.set('');
+      this.newMemberPhone.set('');
+      this.newMemberJoinedDate.set(new Date().toISOString().split('T')[0]);
+
+      setTimeout(() => this.successMessage.set(''), 3000);
+    } catch (error: any) {
+      this.errorMessage.set(error.message || 'Failed to add member. Please try again.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
   async logout() {
     try {
       await this.authService.signOut();
       this.router.navigate(['/']);
-    } catch(err) {
+    } catch (err) {
       console.error('Logout error', err);
     }
   }
