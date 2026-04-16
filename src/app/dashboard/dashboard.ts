@@ -2,8 +2,8 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
-import { MemberService } from '../services/member.service';
 import { RouterModule } from '@angular/router';
+import { MemberService } from '../services/member.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,12 +17,18 @@ export class Dashboard {
 
   totalDeposit = this.memberService.totalDeposit;
   totalMembers = this.memberService.totalMembers;
-
+  totalFine = this.memberService.totalFine;
   months = this.memberService.months;
-  members = this.memberService.members;
   transactions = this.memberService.transactions;
-  displayYear = this.memberService.displayYear;
-  // console.log(this.displayYear);
+  selectedYear = this.memberService.selectedYear;
+  availableYears = this.memberService.availableYears;
+
+  // Always use membersForYear so the grid reacts to year changes
+  members = this.memberService.membersForYear;
+
+  onYearChange(year: number): void {
+    this.memberService.setSelectedYear(year);
+  }
 
   getMonthlyStatus(member: any, index: number): boolean {
     return member.paymentStatus[index];

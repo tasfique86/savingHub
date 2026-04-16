@@ -49,6 +49,18 @@
         <i class="pi pi-user-plus text-base"></i>
         Add Member
       </button>
+
+      <button
+        id="tab-manage-members"
+        type="button"
+        (click)="setTab('manage-members')"
+        [class]="activeTab() === 'manage-members'
+          ? 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-primary-600 to-pink-500 shadow-md transition-all'
+          : 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all'"
+      >
+        <i class="pi pi-users text-base"></i>
+        Manage Members
+      </button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
@@ -92,13 +104,13 @@
                           type="text"
                           [(ngModel)]="searchMember"
                           name="searchMember"
-                          placeholder="Search by name or share number..."
+                          placeholder="Search by name or member ID..."
                           autocomplete="off"
                           class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-sans"
                         />
                       </div>
                       <ul class="max-h-60 overflow-y-auto custom-scrollbar">
-                        @for (m of filteredMembers(); track m.shareNumber) {
+                        @for (m of filteredMembers(); track m.id) {
                           <li>
                             <button
                               type="button"
@@ -106,7 +118,7 @@
                               class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 font-medium transition-colors flex items-center justify-between text-base"
                             >
                               <span>{{ m.name }}</span>
-                              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{{ m.shareNumber }}</span>
+                              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{{ m.shares }} Shares</span>
                             </button>
                           </li>
                         }
@@ -200,10 +212,14 @@
             <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Current Selection</label>
               @if (selectedMemberId()) {
-                @for (m of members(); track m.shareNumber) {
-                  @if (m.shareNumber === selectedMemberId()) {
+                @for (m of members(); track m.id) {
+                  @if (m.id.toString() === selectedMemberId()) {
                     <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ m.name }}</h3>
                     <p class="text-primary-600 font-bold">Total Deposit: ৳{{ m.totalDeposit | number: '1.0-0' }}</p>
+                    <p class="text-slate-500 text-sm font-medium mt-1">{{ m.shares }} Shares ownership</p>
+                    @if (!m.is_active) {
+                      <span class="inline-block mt-2 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Inactive</span>
+                    }
                   }
                 }
               } @else {
@@ -284,7 +300,7 @@
                 </div>
               </div>
 
-              <!-- Phone + Joined Date grid -->
+              <!-- Phone + Shares grid -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Phone -->
                 <div class="flex flex-col gap-2">
@@ -302,19 +318,36 @@
                   </div>
                 </div>
 
-                <!-- Joined Date -->
+                <!-- Shares -->
                 <div class="flex flex-col gap-2">
-                  <label for="memberJoinedDate" class="text-sm font-bold text-slate-700 ml-1">Joined Date</label>
+                  <label for="memberShares" class="text-sm font-bold text-slate-700 ml-1">Number of Shares (1 Share = ৳500)</label>
                   <div class="relative flex items-center">
-                    <i class="pi pi-calendar absolute left-4 text-slate-400"></i>
+                    <i class="pi pi-chart-pie absolute left-4 text-slate-400"></i>
                     <input
-                      type="date"
-                      id="memberJoinedDate"
-                      [(ngModel)]="newMemberJoinedDate"
-                      name="memberJoinedDate"
-                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                      type="number"
+                      id="memberShares"
+                      [(ngModel)]="newMemberShares"
+                      name="memberShares"
+                      min="1"
+                      required
+                      class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                     />
                   </div>
+                </div>
+              </div>
+
+              <!-- Joined Date -->
+              <div class="flex flex-col gap-2">
+                <label for="memberJoinedDate" class="text-sm font-bold text-slate-700 ml-1">Joined Date</label>
+                <div class="relative flex items-center">
+                  <i class="pi pi-calendar absolute left-4 text-slate-400"></i>
+                  <input
+                    type="date"
+                    id="memberJoinedDate"
+                    [(ngModel)]="newMemberJoinedDate"
+                    name="memberJoinedDate"
+                    class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                  />
                 </div>
               </div>
 
@@ -359,7 +392,7 @@
               </span>
             </div>
             <ul class="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
-              @for (m of members(); track m.shareNumber) {
+              @for (m of members(); track m.id) {
                 <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -367,7 +400,7 @@
                     </div>
                     <span class="font-semibold text-slate-800 text-sm">{{ m.name }}</span>
                   </div>
-                  <span class="text-[11px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md font-medium">{{ m.shareNumber }}</span>
+                  <span class="text-[11px] text-slate-400 bg-slate-100 px-2 py-1 rounded-md font-medium">{{ m.shares }} Shares</span>
                 </li>
               }
               @if (members().length === 0) {
@@ -379,5 +412,122 @@
       </div>
     }
 
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: Manage Members                                            -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    @if (activeTab() === 'manage-members') {
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        
+        <!-- Member List -->
+        <div class="lg:col-span-2">
+          <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
+            <div class="mb-6">
+              <h2 class="text-xl font-bold text-slate-900">Member Search</h2>
+              <div class="relative mt-4">
+                <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input
+                  type="text"
+                  [(ngModel)]="searchManageMember"
+                  placeholder="Search members..."
+                  class="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <ul class="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
+              @for (m of filteredManageMembers(); track m.id) {
+                <li 
+                  class="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group cursor-pointer"
+                  (click)="startEditing(m)"
+                >
+                  <div class="flex items-center gap-4">
+                    <div [class]="'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold ' + (m.is_active ? 'bg-primary-500' : 'bg-slate-400')">
+                      {{ m.name.charAt(0).toUpperCase() }}
+                    </div>
+                    <div>
+                      <h4 class="font-bold text-slate-900 leading-none">{{ m.name }}</h4>
+                      <p class="text-xs text-slate-500 mt-1">{{ m.shares }} Shares • {{ m.is_active ? 'Active' : 'Inactive' }}</p>
+                    </div>
+                  </div>
+                  <button class="w-8 h-8 rounded-full bg-white text-slate-400 group-hover:text-primary-600 shadow-sm border border-slate-100 flex items-center justify-center transition-all">
+                    <i class="pi pi-pencil text-xs"></i>
+                  </button>
+                </li>
+              }
+            </ul>
+          </p-card>
+        </div>
+
+        <!-- Edit Form -->
+        <div class="lg:col-span-3">
+          <p-card styleClass="border-none shadow-sm bg-white h-full p-2">
+            @if (editingMemberId()) {
+              <div class="flex items-center justify-between mb-8">
+                <h2 class="text-xl font-bold text-slate-900">Edit Member Details</h2>
+                <button (click)="cancelEditing()" class="text-slate-400 hover:text-slate-600">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+
+              <form (ngSubmit)="saveMemberUpdates()" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">Full Name</label>
+                    <input type="text" [(ngModel)]="editName" name="editName" class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">Shares (Read-only)</label>
+                    <input type="number" [value]="editShares()" disabled class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-100 font-bold text-slate-400 cursor-not-allowed" />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">Email</label>
+                    <input type="email" [(ngModel)]="editEmail" name="editEmail" class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-bold text-slate-700 ml-1">Phone</label>
+                    <input type="text" [(ngModel)]="editPhone" name="editPhone" class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <label class="flex items-center gap-3 cursor-pointer select-none grow">
+                    <div class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" [(ngModel)]="editIsActive" name="editIsActive" class="sr-only peer">
+                      <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </div>
+                    <span class="text-sm font-bold text-slate-700">Member is Active</span>
+                  </label>
+                </div>
+
+                @if (errorMessage()) {
+                  <div class="p-4 rounded-xl bg-red-50 text-red-700 text-sm font-semibold border border-red-100 italic">
+                    {{ errorMessage() }}
+                  </div>
+                }
+
+                <div class="flex gap-4 pt-4">
+                  <button type="button" (click)="cancelEditing()" class="flex-1 py-3.5 px-6 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit" [disabled]="loading()" class="flex-[2] py-3.5 px-6 rounded-2xl font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-md transition-all flex items-center justify-center gap-2">
+                    @if (loading()) { <i class="pi pi-spinner pi-spin"></i> }
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            } @else {
+              <div class="h-full flex flex-col items-center justify-center text-center p-10 opacity-50">
+                <i class="pi pi-user-edit text-6xl text-slate-300 mb-4"></i>
+                <h3 class="text-xl font-bold text-slate-400">Select a member to edit</h3>
+                <p class="text-slate-400 text-sm max-w-xs mt-2">Use the list on the left to select a member you want to update.</p>
+              </div>
+            }
+          </p-card>
+        </div>
+      </div>
+    }
   </main>
 </div>

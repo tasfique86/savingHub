@@ -6,7 +6,7 @@ import { AuthService } from '../services/auth.service';
 import { Card } from 'primeng/card';
 import { RouterModule, Router } from '@angular/router';
 
-export type AdminTab = 'deposit' | 'add-member';
+export type AdminTab = 'deposit' | 'add-member' | 'manage-members';
 
 @Component({
   selector: 'app-admin-panel',
@@ -38,9 +38,9 @@ export class AdminPanel {
 
   filteredMembers = computed(() => {
     const term = this.searchMember().toLowerCase();
-    if (!term) return this.members();
+    if (!term) return this.members().filter(m => m.is_active);
     return this.members().filter(m =>
-      m.name.toLowerCase().includes(term) || m.shareNumber.toLowerCase().includes(term)
+      m.is_active && (m.name.toLowerCase().includes(term) || m.id.toString().includes(term))
     );
   });
 
@@ -57,7 +57,25 @@ export class AdminPanel {
   newMemberName = signal('');
   newMemberEmail = signal('');
   newMemberPhone = signal('');
+  newMemberShares = signal(1);
   newMemberJoinedDate = signal(new Date().toISOString().split('T')[0]);
+
+  // ─── Manage Members State ────────────────────────────────────────────────
+  searchManageMember = signal('');
+  editingMemberId = signal<number | null>(null);
+  editName = signal('');
+  editEmail = signal('');
+  editPhone = signal('');
+  editShares = signal(1); // Read-only in UI
+  editIsActive = signal(true);
+
+  filteredManageMembers = computed(() => {
+    const term = this.searchManageMember().toLowerCase();
+    if (!term) return this.members();
+    return this.members().filter(m =>
+      m.name.toLowerCase().includes(term) || m.id.toString().includes(term)
+    );
+  });
 
   // ─── Shared State ─────────────────────────────────────────────────────────
   successMessage = signal('');
@@ -66,8 +84,8 @@ export class AdminPanel {
 
   // ─── Deposit Methods ──────────────────────────────────────────────────────
   selectMember(member: any) {
-    this.selectedMemberId.set(member.shareNumber);
-    this.selectedMemberName.set(`${member.name} (${member.shareNumber})`);
+    this.selectedMemberId.set(member.id.toString());
+    this.selectedMemberName.set(`${member.name} (${member.shares} Shares)`);
     this.searchMember.set('');
     this.isDropdownOpen.set(false);
   }
@@ -129,6 +147,7 @@ export class AdminPanel {
       await this.memberService.addMember(
         this.newMemberName().trim(),
         this.newMemberEmail().trim(),
+        this.newMemberShares(),
         this.newMemberPhone().trim(),
         this.newMemberJoinedDate()
       );
@@ -137,11 +156,58 @@ export class AdminPanel {
       this.newMemberName.set('');
       this.newMemberEmail.set('');
       this.newMemberPhone.set('');
+      this.newMemberShares.set(1);
       this.newMemberJoinedDate.set(new Date().toISOString().split('T')[0]);
 
       setTimeout(() => this.successMessage.set(''), 3000);
     } catch (error: any) {
       this.errorMessage.set(error.message || 'Failed to add member. Please try again.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // ─── Manage Member Methods ────────────────────────────────────────────────
+  startEditing(member: any) {
+    this.editingMemberId.set(member.id);
+    this.editName.set(member.name);
+    this.editEmail.set(member.email);
+    this.editPhone.set(member.phone || '');
+    this.editShares.set(member.shares);
+    this.editIsActive.set(member.is_active);
+    this.errorMessage.set('');
+    this.successMessage.set('');
+  }
+
+  cancelEditing() {
+    this.editingMemberId.set(null);
+  }
+
+  async saveMemberUpdates(): Promise<void> {
+    const id = this.editingMemberId();
+    if (!id) return;
+
+    if (!this.editName().trim()) {
+      this.errorMessage.set('Name is required.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.errorMessage.set('');
+
+    try {
+      await this.memberService.updateMember(id, {
+        name: this.editName().trim(),
+        email: this.editEmail().trim(),
+        phone: this.editPhone().trim(),
+        is_active: this.editIsActive()
+      });
+
+      this.successMessage.set('Member updated successfully!');
+      this.editingMemberId.set(null);
+      setTimeout(() => this.successMessage.set(''), 3000);
+    } catch (error: any) {
+      this.errorMessage.set(error.message || 'Failed to update member.');
     } finally {
       this.loading.set(false);
     }
