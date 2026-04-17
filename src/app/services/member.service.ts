@@ -18,7 +18,9 @@ export interface Member {
   phone?: string;
   is_active: boolean;
   shares: number;
-  totalDeposit: number;
+  totalReceived: number; // Sum of all payments
+  totalFinePaid: number; // Sum of paid fines
+  netSavings: number;    // Savings (Total - Fines)
   paymentStatus: boolean[];
   paymentAmounts: (number | null)[];
   ledgersByYear: Record<number, { status: boolean[]; amounts: (number | null)[] }>;
@@ -67,7 +69,7 @@ export class MemberService {
   });
 
   readonly totalDeposit = computed(() =>
-    this.members().reduce((acc, m) => acc + m.totalDeposit, 0),
+    this.members().reduce((acc, m) => acc + m.netSavings, 0),
   );
 
   readonly totalMembers = computed(() => this.members().length);
@@ -86,6 +88,9 @@ export class MemberService {
         id, name, shares, email, phone, is_active,
         monthly_ledger (
           year, month, amount_paid, status
+        ),
+        fines (
+          amount, is_paid
         )
       `,
       )
@@ -144,11 +149,18 @@ export class MemberService {
           l.status === 'partial';
       });
 
-      // Total deposit across ALL years
-      const total = allLedgers.reduce(
+      // Total Received across ALL years (all paid contributions + fines)
+      const totalReceived = allLedgers.reduce(
         (acc: number, curr: any) => acc + Number(curr.amount_paid),
         0,
       );
+
+      // Total Fines Paid
+      const totalFinePaid = (m.fines || [])
+        .filter((f: any) => f.is_paid)
+        .reduce((acc: number, f: any) => acc + Number(f.amount), 0);
+
+      const netSavings = totalReceived - totalFinePaid;
 
       // Default display using current selectedYear
       const selectedYearData = ledgersByYear[this.selectedYear()];
@@ -160,7 +172,9 @@ export class MemberService {
         phone: m.phone,
         is_active: m.is_active,
         shares: m.shares || 1,
-        totalDeposit: total,
+        totalReceived,
+        totalFinePaid,
+        netSavings,
         paymentStatus: selectedYearData?.status ?? new Array(12).fill(false),
         paymentAmounts: selectedYearData?.amounts ?? new Array(12).fill(null),
         ledgersByYear,
@@ -291,5 +305,31 @@ export class MemberService {
     }
 
     await this.loadData();
+  }
+
+  async getMemberTransactions(memberId: number): Promise<Transaction[]> {
+    const { data, error } = await this.supabase
+      .from('transactions')
+      .select('id, amount, transaction_date, notes, type')
+      .eq('member_id', memberId)
+      .eq('is_deleted', false)
+      .order('transaction_date', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('Error fetching member transactions:', error);
+      return [];
+    }
+
+    return (data || []).map((t: any) => ({
+      id: `TX-${t.id}`,
+      memberName: '', // Will be filled in UI or not needed there
+      amount: t.amount,
+      date: t.transaction_date,
+      status: 'Completed',
+      type: t.type,
+      note: t.notes,
+    }));
   }
 }

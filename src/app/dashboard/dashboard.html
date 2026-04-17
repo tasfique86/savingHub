@@ -195,7 +195,7 @@
             <tr>
               <th class="bg-white text-slate-700 font-bold">Name</th>
               <th class="bg-white text-slate-700 font-bold">Shares</th>
-              <th class="bg-white text-slate-700 font-bold text-right">Deposit</th>
+              <th class="bg-white text-slate-700 font-bold text-right">Savings</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-member>
@@ -205,7 +205,7 @@
                 <span class="text-slate-500 text-xs font-medium">{{ member.shares }} Shares</span>
               </td>
               <td class="text-right font-bold text-primary-600">
-                {{ member.totalDeposit | currency: 'BDT ' : 'symbol' : '1.0-0' }}
+                {{ member.netSavings | currency: 'BDT ' : 'symbol' : '1.0-0' }}
               </td>
             </tr>
           </ng-template>

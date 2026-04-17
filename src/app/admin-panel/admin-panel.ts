@@ -34,6 +34,7 @@ export class AdminPanel {
   // ─── Deposit Form State ───────────────────────────────────────────────────
   selectedMemberId = signal('');
   selectedMemberName = signal('Choose a member...');
+  selectedMemberTransactions = signal<any[]>([]);
   searchMember = signal('');
 
   filteredMembers = computed(() => {
@@ -83,11 +84,15 @@ export class AdminPanel {
   loading = signal(false);
 
   // ─── Deposit Methods ──────────────────────────────────────────────────────
-  selectMember(member: any) {
+  async selectMember(member: any) {
     this.selectedMemberId.set(member.id.toString());
     this.selectedMemberName.set(`${member.name} (${member.shares} Shares)`);
     this.searchMember.set('');
     this.isDropdownOpen.set(false);
+    
+    // Fetch member transactions
+    const txs = await this.memberService.getMemberTransactions(member.id);
+    this.selectedMemberTransactions.set(txs);
   }
 
   closeDropdownWithDelay() {
