@@ -37,4 +37,16 @@ export class Dashboard {
   getMonthlyAmount(member: any, index: number): number | null {
     return member.paymentAmounts[index];
   }
+
+  getMonthlyDate(member: any, index: number): string | null {
+    return member.paymentDates[index];
+  }
+
+  getRawStatus(member: any, index: number): string {
+    return member.rawStatuses[index];
+  }
+
+  getRequiredAmount(member: any, index: number): number {
+    return member.requiredAmounts[index];
+  }
 }

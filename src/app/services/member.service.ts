@@ -2,7 +2,9 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth.service';
 
 export interface Transaction {
-  id: string;
+  id: string;      // Display ID (TX-123)
+  dbId?: number;   // Actual database ID for operations
+  memberId?: number;
   memberName: string;
   amount: number;
   date: string;
@@ -18,12 +20,22 @@ export interface Member {
   phone?: string;
   is_active: boolean;
   shares: number;
-  totalReceived: number; // Sum of all payments
+  credit_balance: number;
+  totalReceived: number; // Sum of all payments (ledger + credit)
   totalFinePaid: number; // Sum of paid fines
   netSavings: number;    // Savings (Total - Fines)
   paymentStatus: boolean[];
   paymentAmounts: (number | null)[];
-  ledgersByYear: Record<number, { status: boolean[]; amounts: (number | null)[] }>;
+  paymentDates: (string | null)[];
+  rawStatuses: string[];
+  requiredAmounts: number[];
+  ledgersByYear: Record<number, { 
+    status: boolean[]; 
+    amounts: (number | null)[]; 
+    dates: (string | null)[]; 
+    rawStatuses: string[];
+    requiredAmounts: number[];
+  }>;
 }
 
 @Injectable({
@@ -64,6 +76,9 @@ export class MemberService {
         ...member,
         paymentStatus: yearData?.status ?? new Array(12).fill(false),
         paymentAmounts: yearData?.amounts ?? new Array(12).fill(null),
+        paymentDates: yearData?.dates ?? new Array(12).fill(null),
+        rawStatuses: yearData?.rawStatuses ?? new Array(12).fill('due'),
+        requiredAmounts: yearData?.requiredAmounts ?? new Array(12).fill(500), // Fallback to 500
       };
     });
   });
@@ -85,9 +100,9 @@ export class MemberService {
       .from('members')
       .select(
         `
-        id, name, shares, email, phone, is_active,
+        id, name, shares, email, phone, is_active, credit_balance,
         monthly_ledger (
-          year, month, amount_paid, status
+          year, month, amount_paid, status, paid_date, required_amount
         ),
         fines (
           amount, is_paid
@@ -138,19 +153,23 @@ export class MemberService {
           ledgersByYear[l.year] = {
             status: new Array(12).fill(false),
             amounts: new Array(12).fill(null),
+            dates: new Array(12).fill(null),
+            rawStatuses: new Array(12).fill('due'),
+            requiredAmounts: new Array(12).fill(500),
           };
         }
         const idx = l.month - 1;
-        ledgersByYear[l.year].amounts[idx] = l.amount_paid > 0 ? l.amount_paid : null;
+        ledgersByYear[l.year].amounts[idx] = Number(l.amount_paid) > 0 ? Number(l.amount_paid) : null;
+        ledgersByYear[l.year].dates[idx] = l.paid_date || null;
+        ledgersByYear[l.year].rawStatuses[idx] = l.status;
+        ledgersByYear[l.year].requiredAmounts[idx] = Number(l.required_amount) || 500;
         ledgersByYear[l.year].status[idx] =
           l.status === 'paid_on_time' ||
           l.status === 'paid_late' ||
-          l.status === 'advance' ||
-          l.status === 'partial';
+          l.status === 'advance';
       });
 
-      // Total Received across ALL years (all paid contributions + fines)
-      const totalReceived = allLedgers.reduce(
+      const totalReceivedFromLedger = allLedgers.reduce(
         (acc: number, curr: any) => acc + Number(curr.amount_paid),
         0,
       );
@@ -160,7 +179,9 @@ export class MemberService {
         .filter((f: any) => f.is_paid)
         .reduce((acc: number, f: any) => acc + Number(f.amount), 0);
 
-      const netSavings = totalReceived - totalFinePaid;
+      const creditBalance = Number(m.credit_balance || 0);
+      const totalDeposit = totalReceivedFromLedger + creditBalance;
+      const netSavings = totalDeposit - totalFinePaid;
 
       // Default display using current selectedYear
       const selectedYearData = ledgersByYear[this.selectedYear()];
@@ -172,11 +193,15 @@ export class MemberService {
         phone: m.phone,
         is_active: m.is_active,
         shares: m.shares || 1,
-        totalReceived,
+        credit_balance: creditBalance,
+        totalReceived: totalDeposit,
         totalFinePaid,
         netSavings,
         paymentStatus: selectedYearData?.status ?? new Array(12).fill(false),
         paymentAmounts: selectedYearData?.amounts ?? new Array(12).fill(null),
+        paymentDates: selectedYearData?.dates ?? new Array(12).fill(null),
+        rawStatuses: selectedYearData?.rawStatuses ?? new Array(12).fill('due'),
+        requiredAmounts: selectedYearData?.requiredAmounts ?? new Array(12).fill(500),
         ledgersByYear,
       };
     });
@@ -199,6 +224,7 @@ export class MemberService {
 
     const mappedTxs: Transaction[] = (txData || []).map((t: any) => ({
       id: `TX-${t.id}`,
+      dbId: t.id,
       memberName: t.members?.name || 'Unknown',
       amount: t.amount,
       date: t.transaction_date,
@@ -324,6 +350,7 @@ export class MemberService {
 
     return (data || []).map((t: any) => ({
       id: `TX-${t.id}`,
+      dbId: t.id,
       memberName: '', // Will be filled in UI or not needed there
       amount: t.amount,
       date: t.transaction_date,
@@ -331,5 +358,74 @@ export class MemberService {
       type: t.type,
       note: t.notes,
     }));
+  }
+
+  async fetchAllTransactions(limit = 100): Promise<Transaction[]> {
+    let query = this.supabase
+      .from('transactions')
+      .select('id, amount, transaction_date, notes, type, member_id, members(name)')
+      .eq('is_deleted', false)
+      .order('transaction_date', { ascending: false })
+      .order('id', { ascending: false });
+
+    if (limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching all transactions:', error);
+      return [];
+    }
+
+    return (data || []).map((t: any) => ({
+      id: `TX-${t.id}`,
+      dbId: t.id,
+      memberId: t.member_id,
+      memberName: t.members?.name || 'Unknown',
+      amount: t.amount,
+      date: t.transaction_date,
+      status: 'Completed',
+      type: t.type,
+      note: t.notes,
+    }));
+  }
+
+  async updateTransaction(id: number, amount: number, date: string, notes?: string): Promise<void> {
+    const session = await this.supabase.auth.getSession();
+    if (!session.data.session) throw new Error('You must be logged in to update a transaction.');
+
+    const { error } = await this.supabase.rpc('update_transaction', {
+      p_id: id,
+      p_amount: amount,
+      p_transaction_date: date,
+      p_notes: notes || null,
+    });
+
+    if (error) {
+      console.error('Update transaction error:', error);
+      throw error;
+    }
+
+    await this.loadData();
+  }
+
+  async deleteTransaction(id: number, reason?: string): Promise<void> {
+    const session = await this.supabase.auth.getSession();
+    if (!session.data.session) throw new Error('You must be logged in to delete a transaction.');
+
+    const { error } = await this.supabase.rpc('delete_transaction', {
+      p_id: id,
+      p_reason: reason || null,
+      p_deleted_by: session.data.session.user.email || 'admin'
+    });
+
+    if (error) {
+      console.error('Delete transaction error:', error);
+      throw error;
+    }
+
+    await this.loadData();
   }
 }

@@ -147,9 +147,12 @@
               </td>
               @for (month of months(); track $index) {
                 <td class="p-4 text-center">
-                  <div class="flex flex-col items-center gap-1">
-                    @if (getMonthlyStatus(member, $index)) {
-                      <!-- Paid -->
+                  @if (getMonthlyStatus(member, $index)) {
+                    <!-- Fully Paid -->
+                    <div 
+                      class="flex flex-col items-center gap-1 cursor-help"
+                      [attr.title]="getMonthlyDate(member, $index) ? ('Paid on: ' + (getMonthlyDate(member, $index) | date:'mediumDate')) : 'Fully Paid'"
+                    >
                       <span class="text-[10px] font-bold text-green-600">
                         ৳{{ getMonthlyAmount(member, $index) }}
                       </span>
@@ -158,8 +161,13 @@
                       >
                         <i class="pi pi-check text-[10px]"></i>
                       </div>
-                    } @else if (getMonthlyAmount(member, $index)) {
-                      <!-- Partial -->
+                    </div>
+                  } @else if (getRawStatus(member, $index) === 'partial') {
+                    <!-- Partial -->
+                    <div 
+                      class="flex flex-col items-center gap-1 cursor-help"
+                      [attr.title]="'Paid: ৳' + getMonthlyAmount(member, $index) + ' / Required: ৳' + getRequiredAmount(member, $index)"
+                    >
                       <span class="text-[10px] font-bold text-amber-600">
                         ৳{{ getMonthlyAmount(member, $index) }}
                       </span>
@@ -168,15 +176,20 @@
                       >
                         <i class="pi pi-minus text-[10px]"></i>
                       </div>
-                    } @else {
-                      <!-- Unpaid -->
+                    </div>
+                  } @else {
+                    <!-- Unpaid / Due -->
+                    <div 
+                      class="flex flex-col items-center gap-1 cursor-help"
+                      [attr.title]="'No Payment - Required: ৳' + getRequiredAmount(member, $index)"
+                    >
                       <div
                         class="w-6 h-6 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center"
                       >
                         <i class="pi pi-minus text-[10px]"></i>
                       </div>
-                    }
-                  </div>
+                    </div>
+                  }
                 </td>
               }
             </tr>
