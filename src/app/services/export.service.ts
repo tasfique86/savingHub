@@ -70,13 +70,24 @@ export class ExportService {
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
+    const formatDateTime = (iso?: string) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    };
+
     const data = sortedTxs.map(t => ({
       'TX ID': t.id,
       'Member Name': t.memberName,
       'Transaction Date': t.date,
       'Amount (৳)': t.amount,
       'Type': t.type,
-      'Notes': t.note || ''
+      'Notes': t.note || '',
+      'Created': formatDateTime(t.createdAt),
+      'Updated': formatDateTime(t.updatedAt),
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -90,7 +101,9 @@ export class ExportService {
       { wch: 18 }, // Date
       { wch: 12 }, // Amount
       { wch: 15 }, // Type
-      { wch: 40 }  // Notes
+      { wch: 40 }, // Notes
+      { wch: 22 }, // Created
+      { wch: 22 }, // Updated
     ];
 
     XLSX.writeFile(wb, `Somiti_Transactions_Report_${new Date().toISOString().split('T')[0]}.xlsx`);

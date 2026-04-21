@@ -11,6 +11,8 @@ export interface Transaction {
   status: 'Completed' | 'Pending' | 'Failed';
   type?: string;
   note?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Member {
@@ -363,7 +365,7 @@ export class MemberService {
   async fetchAllTransactions(limit = 100): Promise<Transaction[]> {
     let query = this.supabase
       .from('transactions')
-      .select('id, amount, transaction_date, notes, type, member_id, members(name)')
+      .select('id, amount, transaction_date, notes, type, member_id, created_at, updated_at, members(name)')
       .eq('is_deleted', false)
       .order('transaction_date', { ascending: false })
       .order('id', { ascending: false });
@@ -389,6 +391,8 @@ export class MemberService {
       status: 'Completed',
       type: t.type,
       note: t.notes,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
     }));
   }
 
