@@ -2,8 +2,8 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth.service';
 
 export interface Transaction {
-  id: string;      // Display ID (TX-123)
-  dbId?: number;   // Actual database ID for operations
+  id: string; // Display ID (TX-123)
+  dbId?: number; // Actual database ID for operations
   memberId?: number;
   memberName: string;
   amount: number;
@@ -25,19 +25,22 @@ export interface Member {
   credit_balance: number;
   totalReceived: number; // Sum of all payments (ledger + credit)
   totalFinePaid: number; // Sum of paid fines
-  netSavings: number;    // Savings (Total - Fines)
+  netSavings: number; // Savings (Total - Fines)
   paymentStatus: boolean[];
   paymentAmounts: (number | null)[];
   paymentDates: (string | null)[];
   rawStatuses: string[];
   requiredAmounts: number[];
-  ledgersByYear: Record<number, { 
-    status: boolean[]; 
-    amounts: (number | null)[]; 
-    dates: (string | null)[]; 
-    rawStatuses: string[];
-    requiredAmounts: number[];
-  }>;
+  ledgersByYear: Record<
+    number,
+    {
+      status: boolean[];
+      amounts: (number | null)[];
+      dates: (string | null)[];
+      rawStatuses: string[];
+      requiredAmounts: number[];
+    }
+  >;
 }
 
 @Injectable({
@@ -85,9 +88,7 @@ export class MemberService {
     });
   });
 
-  readonly totalDeposit = computed(() =>
-    this.members().reduce((acc, m) => acc + m.netSavings, 0),
-  );
+  readonly totalDeposit = computed(() => this.members().reduce((acc, m) => acc + m.netSavings, 0));
 
   readonly totalMembers = computed(() => this.members().length);
 
@@ -161,14 +162,13 @@ export class MemberService {
           };
         }
         const idx = l.month - 1;
-        ledgersByYear[l.year].amounts[idx] = Number(l.amount_paid) > 0 ? Number(l.amount_paid) : null;
+        ledgersByYear[l.year].amounts[idx] =
+          Number(l.amount_paid) > 0 ? Number(l.amount_paid) : null;
         ledgersByYear[l.year].dates[idx] = l.paid_date || null;
         ledgersByYear[l.year].rawStatuses[idx] = l.status;
         ledgersByYear[l.year].requiredAmounts[idx] = Number(l.required_amount) || 500;
         ledgersByYear[l.year].status[idx] =
-          l.status === 'paid_on_time' ||
-          l.status === 'paid_late' ||
-          l.status === 'advance';
+          l.status === 'paid_on_time' || l.status === 'paid_late' || l.status === 'advance';
       });
 
       const totalReceivedFromLedger = allLedgers.reduce(
@@ -256,7 +256,13 @@ export class MemberService {
     this.selectedYear.set(year);
   }
 
-  async addMember(name: string, email: string, shares: number, phone?: string, joinedDate?: string): Promise<void> {
+  async addMember(
+    name: string,
+    email: string,
+    shares: number,
+    phone?: string,
+    joinedDate?: string,
+  ): Promise<void> {
     const session = await this.supabase.auth.getSession();
     if (!session.data.session) throw new Error('You must be logged in to add a member.');
 
@@ -284,19 +290,16 @@ export class MemberService {
     if (!session.data.session) throw new Error('You must be logged in to update a member.');
 
     // Remove computed/mapped fields that aren't in the DB schema
-    const { 
-      id: _, 
-      totalDeposit: __, 
-      paymentStatus: ___, 
-      paymentAmounts: ____, 
-      ledgersByYear: _____, 
-      ...dbUpdates 
+    const {
+      id: _,
+      totalDeposit: __,
+      paymentStatus: ___,
+      paymentAmounts: ____,
+      ledgersByYear: _____,
+      ...dbUpdates
     } = updates as any;
 
-    const { error } = await this.supabase
-      .from('members')
-      .update(dbUpdates)
-      .eq('id', id);
+    const { error } = await this.supabase.from('members').update(dbUpdates).eq('id', id);
 
     if (error) {
       console.error('Update member error:', error);
@@ -365,7 +368,9 @@ export class MemberService {
   async fetchAllTransactions(limit = 100): Promise<Transaction[]> {
     let query = this.supabase
       .from('transactions')
-      .select('id, amount, transaction_date, notes, type, member_id, created_at, updated_at, members(name)')
+      .select(
+        'id, amount, transaction_date, notes, type, member_id, created_at, updated_at, members(name)',
+      )
       .eq('is_deleted', false)
       .order('transaction_date', { ascending: false })
       .order('id', { ascending: false });
@@ -422,7 +427,7 @@ export class MemberService {
     const { error } = await this.supabase.rpc('delete_transaction', {
       p_id: id,
       p_reason: reason || null,
-      p_deleted_by: session.data.session.user.email || 'admin'
+      p_deleted_by: session.data.session.user.email || 'admin',
     });
 
     if (error) {

@@ -24,7 +24,7 @@ export class AdminPanel {
   protected readonly members = this.memberService.members;
   protected readonly months = this.memberService.months;
   protected readonly availableYears = this.memberService.availableYears;
- 
+
   // Ledger View State
   showLedgerDialog = signal(false);
   ledgerMember = signal<Member | null>(null);

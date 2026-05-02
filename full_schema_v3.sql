@@ -55,7 +55,7 @@ CREATE TABLE club_settings (
 );
 
 INSERT INTO club_settings (id, club_name, savings_start_year, savings_start_month)
-VALUES (1, 'Saving Hub', 2025, 1)
+VALUES (1, 'Saving Hub', 2026, 4)
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── MEMBERS ────────────────────────────────────────────────
@@ -211,8 +211,8 @@ DECLARE
   v_fine_exists   BOOLEAN;
   v_future_year   SMALLINT;
   v_future_month  SMALLINT;
-  v_new_ledger_id INT;
   v_shares        INT;
+  v_joined_date   DATE;
   v_start_year    SMALLINT;
   v_start_month   SMALLINT;
   v_base_deposit  DECIMAL(10,2);
@@ -221,9 +221,14 @@ DECLARE
   v_required      DECIMAL(10,2);
   v_settings      RECORD;
   v_running_credit DECIMAL(10,2) := 0;
+  v_calc_start_date DATE;
+  v_calc_end_date   DATE;
+  v_date_iter       DATE;
+  v_y               SMALLINT;
+  v_m               SMALLINT;
 BEGIN
   -- Load settings and member info
-  SELECT shares INTO v_shares FROM members WHERE id = p_member_id;
+  SELECT shares, joined_date INTO v_shares, v_joined_date FROM members WHERE id = p_member_id;
   SELECT * INTO v_settings FROM club_settings WHERE id = 1;
   v_start_year   := v_settings.savings_start_year;
   v_start_month  := v_settings.savings_start_month;
@@ -233,12 +238,32 @@ BEGIN
 
   v_required := v_shares * v_base_deposit;
 
-  -- Reset
+  -- Determine calculation range
+  v_calc_start_date := GREATEST(MAKE_DATE(v_start_year, v_start_month, 1), DATE_TRUNC('month', v_joined_date)::DATE);
+  
+  -- End date is the latest of: Today OR the latest transaction month
+  SELECT COALESCE(MAX(transaction_date), CURRENT_DATE) INTO v_calc_end_date 
+  FROM transactions WHERE member_id = p_member_id AND is_deleted = FALSE;
+  v_calc_end_date := GREATEST(v_calc_end_date, CURRENT_DATE);
+
+  -- 1. BACKFILL MISSING MONTHS
+  FOR v_date_iter IN 
+    SELECT generate_series(DATE_TRUNC('month', v_calc_start_date), DATE_TRUNC('month', v_calc_end_date), '1 month'::interval)::date
+  LOOP
+    v_y := EXTRACT(YEAR FROM v_date_iter)::SMALLINT;
+    v_m := EXTRACT(MONTH FROM v_date_iter)::SMALLINT;
+    
+    INSERT INTO monthly_ledger (member_id, year, month, required_amount, fine_amount, due_date, status)
+    VALUES (p_member_id, v_y, v_m, v_required, v_fine_amt, MAKE_DATE(v_y::INT, v_m::INT, v_due_day), 'due')
+    ON CONFLICT (member_id, year, month) DO NOTHING;
+  END LOOP;
+
+  -- 2. RESET EXISTING DATA FOR THIS MEMBER
   UPDATE monthly_ledger SET status = 'due', amount_paid = 0, paid_date = NULL WHERE member_id = p_member_id;
   UPDATE fines SET is_paid = FALSE, paid_date = NULL, transaction_id = NULL WHERE member_id = p_member_id;
   UPDATE members SET credit_balance = 0 WHERE id = p_member_id;
 
-  -- Replay
+  -- 3. REPLAY TRANSACTIONS (FIFO)
   v_running_credit := 0;
   FOR v_txn IN
     SELECT id, amount, transaction_date, type FROM transactions
@@ -278,7 +303,7 @@ BEGIN
       v_remaining := v_remaining - v_payment;
     END LOOP;
 
-    -- Advance
+    -- 4. HANDLE ADVANCE (Surplus)
     WHILE v_remaining >= v_required LOOP
       SELECT year, month INTO v_future_year, v_future_month FROM monthly_ledger WHERE member_id = p_member_id ORDER BY year DESC, month DESC LIMIT 1;
       IF NOT FOUND THEN
@@ -287,11 +312,6 @@ BEGIN
       ELSE
         IF v_future_month = 12 THEN v_future_year := v_future_year + 1; v_future_month := 1;
         ELSE v_future_month := v_future_month + 1; END IF;
-      END IF;
-
-      IF (v_future_year < v_start_year) OR (v_future_year = v_start_year AND v_future_month < v_start_month) THEN
-        UPDATE members SET credit_balance = credit_balance + v_remaining WHERE id = p_member_id;
-        v_remaining := 0; EXIT;
       END IF;
 
       INSERT INTO monthly_ledger (member_id, year, month, required_amount, fine_amount, due_date, status, amount_paid, paid_date)
@@ -306,7 +326,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  UPDATE members SET credit_balance = v_running_credit WHERE id = p_member_id;
 END;
 $$;
 
@@ -322,33 +341,7 @@ DECLARE
   v_txn_id      INT;
   v_before      JSONB;
   v_after       JSONB;
-  v_start_year  SMALLINT;
-  v_start_month SMALLINT;
-  v_base_deposit DECIMAL(10,2);
-  v_fine_amt    DECIMAL(10,2);
-  v_due_day     SMALLINT;
-  v_shares      INT;
-  v_cur_year    SMALLINT;
-  v_cur_month   SMALLINT;
-  v_settings    RECORD;
 BEGIN
-  SELECT shares INTO v_shares FROM members WHERE id = p_member_id;
-  SELECT * INTO v_settings FROM club_settings WHERE id = 1;
-  v_start_year   := v_settings.savings_start_year;
-  v_start_month  := v_settings.savings_start_month;
-  v_base_deposit := v_settings.base_share_value;
-  v_fine_amt     := v_settings.late_fine_amount;
-  v_due_day      := v_settings.due_day;
-
-  v_cur_year  := EXTRACT(YEAR  FROM p_transaction_date)::SMALLINT;
-  v_cur_month := EXTRACT(MONTH FROM p_transaction_date)::SMALLINT;
-
-  IF (v_cur_year > v_start_year) OR (v_cur_year = v_start_year AND v_cur_month >= v_start_month) THEN
-    INSERT INTO monthly_ledger (member_id, year, month, required_amount, fine_amount, due_date, status)
-    VALUES (p_member_id, v_cur_year, v_cur_month, v_shares * v_base_deposit, v_fine_amt, MAKE_DATE(v_cur_year::INT, v_cur_month::INT, v_due_day), 'due')
-    ON CONFLICT (member_id, year, month) DO NOTHING;
-  END IF;
-
   SELECT jsonb_agg(jsonb_build_object('month', month, 'year', year, 'status', status, 'amount_paid', amount_paid)) INTO v_before FROM monthly_ledger WHERE member_id = p_member_id;
   INSERT INTO transactions (member_id, amount, transaction_date, type, notes) VALUES (p_member_id, p_amount, p_transaction_date, 'deposit', p_notes) RETURNING id INTO v_txn_id;
   PERFORM recalculate_member_ledger(p_member_id);

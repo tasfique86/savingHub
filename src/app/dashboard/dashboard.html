@@ -2,21 +2,21 @@
   <!-- Header Section -->
   <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
     <div>
-      <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Club Dashboard</h1>
-      <p class="text-slate-500 mt-1 font-medium">Overview of Khutakhali Somiti financial status.</p>
+      <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Saving Hub Dashboard</h1>
+      <p class="text-slate-500 mt-1 font-medium">Overview of Saving Hub financial status.</p>
     </div>
     <div class="flex items-center gap-3">
+      <span
+        class="px-3 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-700 hidden sm:inline-block"
+      >
+        Live Updates
+      </span>
       <a
         routerLink="/admin"
         class="px-4 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all focus:ring-4 focus:ring-slate-900/10 flex items-center gap-2"
       >
         <i class="pi pi-cog"></i> Admin Panel
       </a>
-      <span
-        class="px-3 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-700 hidden sm:inline-block"
-      >
-        Live Updates
-      </span>
     </div>
   </header>
 
@@ -142,16 +142,22 @@
               >
                 <div class="flex flex-col">
                   <span>{{ member.name }}</span>
-                  <span class="text-[10px] text-slate-400 font-medium">{{ member.shares }} Shares</span>
+                  <span class="text-[10px] text-slate-400 font-medium"
+                    >{{ member.shares }} Shares</span
+                  >
                 </div>
               </td>
               @for (month of months(); track $index) {
                 <td class="p-4 text-center">
                   @if (getMonthlyStatus(member, $index)) {
                     <!-- Fully Paid -->
-                    <div 
+                    <div
                       class="flex flex-col items-center gap-1 cursor-help"
-                      [attr.title]="getMonthlyDate(member, $index) ? ('Paid on: ' + (getMonthlyDate(member, $index) | date:'mediumDate')) : 'Fully Paid'"
+                      [attr.title]="
+                        getMonthlyDate(member, $index)
+                          ? 'Paid on: ' + (getMonthlyDate(member, $index) | date: 'mediumDate')
+                          : 'Fully Paid'
+                      "
                     >
                       <span class="text-[10px] font-bold text-green-600">
                         ৳{{ getMonthlyAmount(member, $index) }}
@@ -164,9 +170,14 @@
                     </div>
                   } @else if (getRawStatus(member, $index) === 'partial') {
                     <!-- Partial -->
-                    <div 
+                    <div
                       class="flex flex-col items-center gap-1 cursor-help"
-                      [attr.title]="'Paid: ৳' + getMonthlyAmount(member, $index) + ' / Required: ৳' + getRequiredAmount(member, $index)"
+                      [attr.title]="
+                        'Paid: ৳' +
+                        getMonthlyAmount(member, $index) +
+                        ' / Required: ৳' +
+                        getRequiredAmount(member, $index)
+                      "
                     >
                       <span class="text-[10px] font-bold text-amber-600">
                         ৳{{ getMonthlyAmount(member, $index) }}
@@ -179,7 +190,7 @@
                     </div>
                   } @else {
                     <!-- Unpaid / Due -->
-                    <div 
+                    <div
                       class="flex flex-col items-center gap-1 cursor-help"
                       [attr.title]="'No Payment - Required: ৳' + getRequiredAmount(member, $index)"
                     >
@@ -244,7 +255,9 @@
               <td class="font-bold text-primary-700">
                 {{ tx.amount | currency: 'BDT ' : 'symbol' : '1.0-0' }}
               </td>
-              <td class="text-sm text-slate-500 font-medium">{{ tx.date | date:'dd MMM yyyy' }}</td>
+              <td class="text-sm text-slate-500 font-medium">
+                {{ tx.date | date: 'dd MMM yyyy' }}
+              </td>
             </tr>
           </ng-template>
         </p-table>
